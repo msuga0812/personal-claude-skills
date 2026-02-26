@@ -34,6 +34,5 @@ argument-hint: "[引数の説明]"
 
 ## 公開リポジトリ向けポリシー
 
-- [Contributing Guide](CONTRIBUTING.md)
 - [Code of Conduct](.github/CODE_OF_CONDUCT.md)
 - [Security Policy](.github/SECURITY.md)
