@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Validate shell script syntax
+        run: bash -n setup.sh
+
+      - name: Lint shell script
+        run: shellcheck setup.sh
+
+      - name: Verify setup script behavior in isolated HOME
+        run: |
+          temp_home="$(mktemp -d)"
+          HOME="$temp_home" bash setup.sh
+          test -L "$temp_home/.claude/skills/daily-work-summary"
+
+      - name: Validate SKILL frontmatter keys
+        run: |
+          shopt -s nullglob
+          files=(skills/*/SKILL.md)
+          test ${#files[@]} -gt 0
+          for file in "${files[@]}"; do
+            grep -q '^---$' "$file"
+            grep -q '^name:' "$file"
+            grep -q '^description:' "$file"
+          done
