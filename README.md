@@ -8,13 +8,14 @@ Claude Code で使うカスタムスキルを管理するリポジトリ。
 bash setup.sh
 ```
 
-`skills/` 配下の各スキルディレクトリを `~/.claude/skills/` にシンボリックリンクとして配置します。リンク済みの場合はスキップされます。
+`skills/` 配下の各スキルディレクトリを `~/.claude/skills/` にシンボリックリンクとして配置します。スキルディレクトリ内の`.sh`ファイルは `~/.claude/scripts/` にもシンボリックリンクされます。リンク済みの場合はスキップされます。
 
 ## スキル一覧
 
 | スキル名 | 概要 |
 |---|---|
 | [daily-work-summary](skills/daily-work-summary/SKILL.md) | Notion上のインラインデータベースに日次作業メモを自動生成。Git/Linearの実績収集、構造化、ヒアリングによる振り返り、課題の解決アプローチ提案まで一括実行。 |
+| [voicevox-notify](skills/voicevox-notify/SKILL.md) | VoiceVox音声通知ラッパー。タスク完了時にVoiceVoxが起動していればキャラクター音声で通知し、未起動ならmacOS sayにフォールバック。 |
 
 ## スキルの追加方法
 
