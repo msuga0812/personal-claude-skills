@@ -107,7 +107,7 @@ fi
 
 # --- 4. settings.json に hooks を追加 ---
 if [ -f "$SETTINGS_JSON" ] && command -v jq &>/dev/null; then
-  stop_cmd="~/.claude/scripts/notify-wezterm.sh waiting"
+  stop_cmd="~/.claude/scripts/notify-wezterm.sh idle"
   submit_cmd="~/.claude/scripts/notify-wezterm.sh working"
   stop_entry='{"matcher":"","hooks":[{"type":"command","command":"'"$stop_cmd"'"}]}'
   submit_entry='{"matcher":"","hooks":[{"type":"command","command":"'"$submit_cmd"'"}]}'
@@ -131,7 +131,7 @@ if [ -f "$SETTINGS_JSON" ] && command -v jq &>/dev/null; then
       .hooks //= {} |
       # Stop 配列がなければ作成、既にコマンドがなければ追加
       .hooks.Stop //= [] |
-      (if (.hooks.Stop | map(select(.hooks[]?.command == "~/.claude/scripts/notify-wezterm.sh waiting")) | length) == 0
+      (if (.hooks.Stop | map(select(.hooks[]?.command == "~/.claude/scripts/notify-wezterm.sh idle")) | length) == 0
        then .hooks.Stop += [$stop_entry]
        else . end) |
       # UserPromptSubmit 配列がなければ作成、既にコマンドがなければ追加

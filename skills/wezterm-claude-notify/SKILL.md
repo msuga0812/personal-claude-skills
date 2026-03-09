@@ -33,8 +33,7 @@ WezTerm Lua (user-var-changed イベント)
 | 状態 | トリガー | 視覚効果 |
 |------|---------|---------|
 | `working` | UserPromptSubmit hook | カラースキーム変更（GruvboxDark） |
-| `waiting` | Stop hook | ステータスバーに「WAITING FOR INPUT」表示 |
-| `idle` | zsh precmd（Claude終了後） | 通常表示に復帰 |
+| `idle` | Stop hook / zsh precmd | 通常表示に復帰 |
 
 ## Prerequisites
 
