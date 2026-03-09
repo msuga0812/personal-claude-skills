@@ -11,18 +11,31 @@ SCRIPTS_DIR="$HOME/.claude/scripts"
 mkdir -p "$SKILLS_DIR"
 mkdir -p "$SCRIPTS_DIR"
 
+ensure_symlink() {
+  local name="$1" src="$2" dst="$3"
+  if [ -L "$dst" ]; then
+    echo "skip: $name (symlink already exists)"
+  elif [ -e "$dst" ]; then
+    echo "warn: $name (non-symlink file exists, skipping)"
+  else
+    ln -s "$src" "$dst"
+    echo "link: $name -> $src"
+  fi
+}
+
 for skill_dir in "$REPO_DIR"/skills/*/; do
   skill_name="$(basename "$skill_dir")"
   target="$SKILLS_DIR/$skill_name"
 
-  if [ -L "$target" ]; then
-    echo "skip: $skill_name (symlink already exists)"
-  elif [ -e "$target" ]; then
-    echo "warn: $skill_name (non-symlink file exists, skipping)"
-  else
-    ln -s "$skill_dir" "$target"
-    echo "link: $skill_name -> $skill_dir"
+  # スキル固有のsetup.shがあれば実行し、scripts/シンボリックリンクはスキップ
+  if [ -x "$skill_dir/setup.sh" ]; then
+    echo "setup: $skill_name (custom setup)"
+    "$skill_dir/setup.sh"
+    ensure_symlink "$skill_name" "$skill_dir" "$target"
+    continue
   fi
+
+  ensure_symlink "$skill_name" "$skill_dir" "$target"
 
   # スキルディレクトリ内のシェルスクリプトを~/.claude/scripts/にシンボリックリンク
   for script in "$skill_dir"*.sh; do
@@ -30,14 +43,7 @@ for skill_dir in "$REPO_DIR"/skills/*/; do
     script_name="$(basename "$script")"
     script_target="$SCRIPTS_DIR/$script_name"
 
-    if [ -L "$script_target" ]; then
-      echo "skip: scripts/$script_name (symlink already exists)"
-    elif [ -e "$script_target" ]; then
-      echo "warn: scripts/$script_name (non-symlink file exists, skipping)"
-    else
-      ln -s "$script" "$script_target"
-      echo "link: scripts/$script_name -> $script"
-    fi
+    ensure_symlink "scripts/$script_name" "$script" "$script_target"
   done
 done
 
