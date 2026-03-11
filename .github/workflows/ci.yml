@@ -30,6 +30,8 @@ jobs:
         run: |
           temp_home="$(mktemp -d)"
           HOME="$temp_home" bash setup.sh
+          test ! -d "$temp_home/.claude/skills"
+          HOME="$temp_home" bash setup.sh -y
           shopt -s nullglob
           skill_dirs=(skills/*/)
           test ${#skill_dirs[@]} -gt 0
