@@ -10,6 +10,7 @@ local claude_notify = {
 }
 
 -- カラースキーム設定（カスタマイズ用定数）
+local BASE_SCHEME = "iceberg-dark"
 local WORKING_SCHEME = "AdventureTime"
 local ASKING_BG = "#3d1215"
 
@@ -54,57 +55,60 @@ wezterm.on("format-tab-title", function(tab, tabs, panes, config, hover, max_wid
   }
 end)
 
--- 状態キャッシュ（update-right-statusの毎tick no-op回避）
-local last_claude_state = ""
+-- 状態キャッシュ（ペインIDごとに管理、複数ウィンドウ対応）
+local last_claude_state = {}
 
 -- B/C/D/E/G: update-right-status で全オーバーライドを一元管理
 -- user-var-changed ではなく update-right-status を使うことでカラースキーム変更が確実に反映される
 wezterm.on("update-right-status", function(window, pane)
+  local pane_id = tostring(pane:pane_id())
   local user_vars = pane:get_user_vars()
   local claude_state = user_vars and user_vars.claude_state or ""
 
-  -- 状態が変化していなければ何もしない
-  if claude_state == last_claude_state then
+  -- Claude Codeが実行されていないペインはスキップ
+  if claude_state == "" then
     return
   end
-  last_claude_state = claude_state
+
+  -- 状態が変化していなければ何もしない
+  if claude_state == last_claude_state[pane_id] then
+    return
+  end
+  last_claude_state[pane_id] = claude_state
 
   local is_working = (claude_state == "working")
   local is_waiting = (claude_state == "waiting")
-  local overrides = window:get_config_overrides() or {}
+
+  local overrides = {}
 
   -- B: カラースキーム切替（working/asking/idle の3状態）
   if claude_notify.color_scheme then
     if is_working then
       overrides.color_scheme = WORKING_SCHEME
-      overrides.colors = nil
     elseif claude_state == "asking" then
-      overrides.color_scheme = nil
-      if not overrides.colors then overrides.colors = {} end
-      overrides.colors.background = ASKING_BG
+      overrides.color_scheme = BASE_SCHEME
+      overrides.colors = { background = ASKING_BG }
     else
-      overrides.color_scheme = nil
-      overrides.colors = nil
+      overrides.color_scheme = BASE_SCHEME
     end
   end
 
   -- D: 背景透明度変更
-  if claude_notify.opacity then
-    overrides.window_background_opacity = is_waiting and 0.6 or nil
+  if claude_notify.opacity and is_waiting then
+    overrides.window_background_opacity = 0.6
   end
 
   -- E: タブバー背景色全体変更
-  if claude_notify.tab_bar_bg then
+  if claude_notify.tab_bar_bg and is_waiting then
     if not overrides.colors then overrides.colors = {} end
-    if not overrides.colors.tab_bar then overrides.colors.tab_bar = {} end
-    overrides.colors.tab_bar.background = is_waiting and "#1a3a2a" or nil
+    overrides.colors.tab_bar = { background = "#1a3a2a" }
   end
 
   -- G: カーソル色変更
-  if claude_notify.cursor_color then
+  if claude_notify.cursor_color and is_waiting then
     if not overrides.colors then overrides.colors = {} end
-    overrides.colors.cursor_bg = is_waiting and "#2d8a4e" or nil
-    overrides.colors.cursor_fg = is_waiting and "#ffffff" or nil
+    overrides.colors.cursor_bg = "#2d8a4e"
+    overrides.colors.cursor_fg = "#ffffff"
   end
 
   window:set_config_overrides(overrides)
