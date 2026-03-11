@@ -50,80 +50,85 @@ wezterm.on("format-tab-title", function(tab, tabs, panes, config, hover, max_wid
   }
 end)
 
--- C: 右ステータスバーにテキスト表示
+-- B/C: update-right-status でカラースキーム切替 + ステータスバー表示
+-- user-var-changed ではなく update-right-status を使うことで確実に反映される
 wezterm.on("update-right-status", function(window, pane)
-  if not claude_notify.status_bar then
-    return
+  local user_vars = pane:get_user_vars()
+  local claude_state = user_vars and user_vars.claude_state or ""
+  local is_working = (claude_state == "working")
+
+  -- B: カラースキーム切替（working/asking/idle の3状態）
+  if claude_notify.color_scheme then
+    local overrides = window:get_config_overrides() or {}
+    local current_scheme = overrides.color_scheme
+    local current_bg = overrides.colors and overrides.colors.background
+    if is_working then
+      -- working: AdventureTime
+      if current_scheme ~= "AdventureTime" or current_bg ~= nil then
+        overrides.color_scheme = "AdventureTime"
+        overrides.colors = nil
+        window:set_config_overrides(overrides)
+      end
+    elseif claude_state == "asking" then
+      -- asking: ベーススキーム + 暗い赤背景のカスタムオーバーライド
+      local asking_bg = "#3d1215"
+      if current_scheme ~= nil or current_bg ~= asking_bg then
+        overrides.color_scheme = nil
+        overrides.colors = { background = asking_bg }
+        window:set_config_overrides(overrides)
+      end
+    else
+      -- idle: ベースconfig に戻す
+      if current_scheme ~= nil or current_bg ~= nil then
+        overrides.color_scheme = nil
+        overrides.colors = nil
+        window:set_config_overrides(overrides)
+      end
+    end
   end
 
-  local user_vars = pane:get_user_vars()
-  if user_vars and user_vars.claude_state == "waiting" then
-    window:set_right_status(wezterm.format({
-      { Foreground = { Color = "#2d8a4e" } },
-      { Background = { Color = "#1a1a2e" } },
-      { Attribute = { Intensity = "Bold" } },
-      { Text = " \u{25cf} WAITING FOR INPUT " },
-    }))
-  else
-    window:set_right_status("")
+  -- C: 右ステータスバーにテキスト表示
+  if claude_notify.status_bar then
+    if claude_state == "waiting" then
+      window:set_right_status(wezterm.format({
+        { Foreground = { Color = "#2d8a4e" } },
+        { Background = { Color = "#1a1a2e" } },
+        { Attribute = { Intensity = "Bold" } },
+        { Text = " \u{25cf} WAITING FOR INPUT " },
+      }))
+    else
+      window:set_right_status("")
+    end
   end
 end)
 
--- B/D/E/G: user-var-changed でまとめて config overrides を適用
+-- D/E/G: user-var-changed で即時適用が必要なオーバーライド
 wezterm.on("user-var-changed", function(window, pane, name, value)
   if name ~= "claude_state" then
     return
   end
 
-  local overrides = window:get_config_overrides() or {}
-  local is_waiting = (value == "waiting")
   local is_working = (value == "working")
-
-  -- B: カラースキーム切替（実行中のみ変更、入力待ち/idle時は通常）
-  if claude_notify.color_scheme then
-    if is_working then
-      overrides.color_scheme = "GruvboxDark"
-    else
-      overrides.color_scheme = nil
-    end
-  end
+  local is_waiting = (value == "waiting")
+  local overrides = window:get_config_overrides() or {}
 
   -- D: 背景透明度変更
   if claude_notify.opacity then
-    if is_waiting then
-      overrides.window_background_opacity = 0.6
-    else
-      overrides.window_background_opacity = nil
-    end
+    overrides.window_background_opacity = is_waiting and 0.6 or nil
   end
 
   -- E: タブバー背景色全体変更
   if claude_notify.tab_bar_bg then
-    if not overrides.colors then
-      overrides.colors = {}
-    end
-    if not overrides.colors.tab_bar then
-      overrides.colors.tab_bar = {}
-    end
-    if is_waiting then
-      overrides.colors.tab_bar.background = "#1a3a2a"
-    else
-      overrides.colors.tab_bar.background = nil
-    end
+    if not overrides.colors then overrides.colors = {} end
+    if not overrides.colors.tab_bar then overrides.colors.tab_bar = {} end
+    overrides.colors.tab_bar.background = is_waiting and "#1a3a2a" or nil
   end
 
   -- G: カーソル色変更
   if claude_notify.cursor_color then
-    if not overrides.colors then
-      overrides.colors = {}
-    end
-    if is_waiting then
-      overrides.colors.cursor_bg = "#2d8a4e"
-      overrides.colors.cursor_fg = "#ffffff"
-    else
-      overrides.colors.cursor_bg = nil
-      overrides.colors.cursor_fg = nil
-    end
+    if not overrides.colors then overrides.colors = {} end
+    overrides.colors.cursor_bg = is_waiting and "#2d8a4e" or nil
+    overrides.colors.cursor_fg = is_waiting and "#ffffff" or nil
   end
 
   window:set_config_overrides(overrides)

@@ -21,5 +21,12 @@ find_tty() {
 
 tty_dev=$(find_tty)
 if [ -n "$tty_dev" ] && [ -w "$tty_dev" ]; then
-  printf '\033]1337;SetUserVar=%s=%s\007' claude_state "$encoded" > "$tty_dev"
+  if [ "$state" = "working" ]; then
+    # UserPromptSubmit: 即座に送信
+    printf '\033]1337;SetUserVar=%s=%s\007' claude_state "$encoded" > "$tty_dev"
+  else
+    # Stop hook: Claude CodeのTUI復元完了を待ってからバックグラウンドで送信
+    # （レースコンディション回避）
+    (sleep 1 && printf '\033]1337;SetUserVar=%s=%s\007' claude_state "$encoded" > "$tty_dev") &
+  fi
 fi
