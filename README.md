@@ -16,6 +16,7 @@ bash setup.sh
 |---|---|
 | [daily-work-summary](skills/daily-work-summary/SKILL.md) | Notion上のインラインデータベースに日次作業メモを自動生成。Git/Linearの実績収集、構造化、ヒアリングによる振り返り、課題の解決アプローチ提案まで一括実行。 |
 | [voicevox-notify](skills/voicevox-notify/SKILL.md) | VoiceVox音声通知ラッパー。タスク完了時にVoiceVoxが起動していればキャラクター音声で通知し、未起動ならmacOS sayにフォールバック。 |
+| [wezterm-claude-notify](skills/wezterm-claude-notify/SKILL.md) | WezTerm視覚通知。Claude Codeの状態（working/asking/idle）に応じてカラースキームや背景色を切り替え、承認待ちや入力待ちを視覚的に通知。 |
 
 ## スキルの追加方法
 
