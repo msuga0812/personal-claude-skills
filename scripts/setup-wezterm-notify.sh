@@ -389,29 +389,43 @@ inject_hooks() {
   tmpfile=$(mktemp)
 
   jq --arg cmd "$notify_cmd" '
+    def has_notify_command($state):
+      any(.hooks[]?; .command == ($cmd + " " + $state));
+
+    def strip_notify_commands:
+      map(
+        .hooks |= map(select(.command? | startswith($cmd) | not))
+      )
+      | map(select((.hooks | length) > 0));
+
     .hooks //= {} |
 
     # UserPromptSubmit -> working
     .hooks.UserPromptSubmit //= [] |
-    (if (.hooks.UserPromptSubmit | map(select(.hooks[]?.command | test($cmd))) | length) == 0
+    (if (.hooks.UserPromptSubmit | any(.[]; has_notify_command("working"))) | not
      then .hooks.UserPromptSubmit += [{"matcher":"","hooks":[{"type":"command","command":($cmd + " working")}]}]
      else . end) |
 
-    # Notification -> asking (matcherを空文字列で全Notificationに対応)
+    # Notification は既存の notify-wezterm エントリを一旦除去し、
+    # permission_prompt / idle_prompt の2件へ正規化する
     .hooks.Notification //= [] |
-    (if (.hooks.Notification | map(select(.hooks[]?.command | test($cmd))) | length) == 0
-     then .hooks.Notification += [{"matcher":"","hooks":[{"type":"command","command":($cmd + " asking")}]}]
+    .hooks.Notification |= strip_notify_commands |
+    (if (.hooks.Notification | any(.[]; .matcher == "permission_prompt" and has_notify_command("asking"))) | not
+     then .hooks.Notification += [{"matcher":"permission_prompt","hooks":[{"type":"command","command":($cmd + " asking")}]}]
+     else . end) |
+    (if (.hooks.Notification | any(.[]; .matcher == "idle_prompt" and has_notify_command("idle"))) | not
+     then .hooks.Notification += [{"matcher":"idle_prompt","hooks":[{"type":"command","command":($cmd + " idle")}]}]
      else . end) |
 
     # PostToolUse -> working (Notification後の作業復帰で状態を戻す)
     .hooks.PostToolUse //= [] |
-    (if (.hooks.PostToolUse | map(select(.hooks[]?.command | test($cmd))) | length) == 0
+    (if (.hooks.PostToolUse | any(.[]; has_notify_command("working"))) | not
      then .hooks.PostToolUse += [{"matcher":"","hooks":[{"type":"command","command":($cmd + " working")}]}]
      else . end) |
 
     # Stop -> idle
     .hooks.Stop //= [] |
-    (if (.hooks.Stop | map(select(.hooks[]?.command | test($cmd))) | length) == 0
+    (if (.hooks.Stop | any(.[]; has_notify_command("idle"))) | not
      then .hooks.Stop += [{"matcher":"","hooks":[{"type":"command","command":($cmd + " idle")}]}]
      else . end)
   ' "$SETTINGS_JSON" > "$tmpfile"

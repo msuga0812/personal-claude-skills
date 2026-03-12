@@ -137,3 +137,5 @@ local ASKING_BG = "#3d1215"            -- asking時の背景色
 - 状態キャッシュはペインIDごとに管理し、複数ウィンドウ環境での干渉を防止
 - idle時は`set_config_overrides({})`ではなく明示的に`BASE_SCHEME`を設定（空テーブルだとリセットが効かないWezTermの挙動に対応）
 - Notificationフックの`permission_prompt`は承認ダイアログ表示時のみ発火するため、自動承認ツールでのチラつきが発生しない
+- Notificationフックを`matcher: ""`で全件`asking`にすると、通常通知でも`asking`に遷移して色が戻らなくなる。`permission_prompt`と`idle_prompt`を分けて設定する
+- `PostToolUse`の`notify-wezterm.sh working`が欠けると、承認後に作業へ戻っても配色が復帰しない
