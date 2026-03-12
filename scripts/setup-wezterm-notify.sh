@@ -370,7 +370,7 @@ inject_zshrc() {
     "$zshrc_snippet"
 }
 
-# settings.jsonにhooksを注入（SKILL.md設計通り全6種）
+# settings.jsonにhooksを注入
 inject_hooks() {
   if ! command -v jq &>/dev/null; then
     echo "warn: jq not found, skipping settings.json injection"
@@ -401,6 +401,12 @@ inject_hooks() {
     .hooks.Notification //= [] |
     (if (.hooks.Notification | map(select(.hooks[]?.command | test($cmd))) | length) == 0
      then .hooks.Notification += [{"matcher":"","hooks":[{"type":"command","command":($cmd + " asking")}]}]
+     else . end) |
+
+    # PostToolUse -> working (Notification後の作業復帰で状態を戻す)
+    .hooks.PostToolUse //= [] |
+    (if (.hooks.PostToolUse | map(select(.hooks[]?.command | test($cmd))) | length) == 0
+     then .hooks.PostToolUse += [{"matcher":"","hooks":[{"type":"command","command":($cmd + " working")}]}]
      else . end) |
 
     # Stop -> idle
