@@ -2,7 +2,7 @@
 name: voicevox-notify
 description: >
   VoiceVox音声通知ラッパー。タスク完了時にVoiceVoxが起動していればキャラクター音声で通知し、未起動ならmacOS sayにフォールバックする。
-  話者はランダム選択され、キャラクターに合わせた口調に変換される。
+  話者はVoiceVoxから動的取得してランダム選択され、キャラクターに合わせた口調に変換される。
   トリガー: 通知設定、voicevox notify、音声通知セットアップ
 argument-hint: "[通知テキスト]"
 ---
@@ -65,7 +65,11 @@ bash setup.sh
 ~/.claude/scripts/notify.sh "${TASK_DESCRIPTION} is complete at ${REPOSITORY_NAME}"
 ```
 
-## 話者一覧
+## 話者選択
+
+- 通常時: `GET /speakers` で取得できる全スタイルからランダム選択
+- `VOICEVOX_SPEAKER` 指定時: その話者IDを固定使用
+- `/speakers` 取得失敗時: 以下のフォールバック話者から選択
 
 | Speaker ID | キャラクター | 口調 |
 |---|---|---|
@@ -79,7 +83,7 @@ bash setup.sh
 | 変数 | デフォルト | 説明 |
 |---|---|---|
 | `VOICEVOX_HOST` | `http://127.0.0.1:50021` | VoiceVox APIのホスト |
-| `VOICEVOX_SPEAKER` | (未設定=ランダム) | 固定話者ID |
+| `VOICEVOX_SPEAKER` | (未設定=ランダム) | 固定話者ID。`curl "$VOICEVOX_HOST/speakers"` の `styles[].id` を指定 |
 
 ## 処理フロー
 
@@ -89,7 +93,9 @@ bash setup.sh
   v
 VoiceVox起動チェック (curl /version, timeout 1秒)
   |
-  +-- 起動中 --> ランダムにspeaker_id選択
+  +-- 起動中 --> /speakers から話者一覧取得
+  |              --> ランダムにspeaker_id選択
+  |              --> 取得失敗時はフォールバック話者を使用
   |              --> テキストをキャラ口調に変換 (sed)
   |              --> /audio_query でクエリ生成
   |              --> /synthesis でWAV生成

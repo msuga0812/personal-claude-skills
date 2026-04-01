@@ -15,14 +15,59 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# 話者リスト: ID キャラ名
-SPEAKERS=(1 3 0 8)
-SPEAKER_NAMES=(
+# `/speakers` の取得に失敗したときだけ使う安全なフォールバック
+FALLBACK_SPEAKERS=(1 3 0 8)
+FALLBACK_SPEAKER_NAMES=(
   [1]="ずんだもん(ノーマル)"
   [3]="ずんだもん(あまあま)"
   [0]="四国めたん(ノーマル)"
   [8]="春日部つむぎ(ノーマル)"
 )
+
+fetch_available_speakers() {
+  curl -s --connect-timeout 2 "${VOICEVOX_HOST}/speakers" 2>/dev/null \
+    | python3 -c '
+import json
+import sys
+
+try:
+    speakers = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+
+for speaker in speakers:
+    name = speaker.get("name", "")
+    for style in speaker.get("styles", []):
+        style_id = style.get("id")
+        style_name = style.get("name", "")
+        if style_id is None:
+            continue
+        print(style_id)
+' || return 1
+}
+
+choose_speaker_id() {
+  if [[ -n "${VOICEVOX_SPEAKER:-}" ]]; then
+    echo "$VOICEVOX_SPEAKER"
+    return 0
+  fi
+
+  local discovered=()
+  local discovered_raw
+  if discovered_raw="$(fetch_available_speakers)"; then
+    local old_ifs="$IFS"
+    IFS=$'\n'
+    discovered=($discovered_raw)
+    IFS="$old_ifs"
+  fi
+
+  if [[ ${#discovered[@]} -gt 0 ]]; then
+    echo "${discovered[$((RANDOM % ${#discovered[@]}))]}"
+    return 0
+  fi
+
+  echo "${FALLBACK_SPEAKERS[$((RANDOM % ${#FALLBACK_SPEAKERS[@]}))]}"
+}
 
 # キャラ口調変換
 transform_text() {
@@ -71,11 +116,7 @@ voicevox_speak() {
 
   # 話者選択
   local speaker_id
-  if [[ -n "${VOICEVOX_SPEAKER:-}" ]]; then
-    speaker_id="$VOICEVOX_SPEAKER"
-  else
-    speaker_id="${SPEAKERS[$((RANDOM % ${#SPEAKERS[@]}))]}"
-  fi
+  speaker_id="$(choose_speaker_id)"
 
   # 口調変換
   local transformed
